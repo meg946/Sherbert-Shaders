@@ -2,15 +2,22 @@
 This is my second try at creating a shader pack!
 
 # Things done:
+1. Water/Lava/Powdered snow colors
+2. Sunrise Sunset Color changes
 
 # Things in progress:
 
 1. Directional Lighting
-2. Sky color temp changes throught the day/night cycle
 
 
 # Things to add:
 
 1. Colored lighting and shadows
-2. Shadows
+2. Shadows (16x16 only))
 3. PBR support (might not happen)
+4. Bloom
+5. Better clouds (not volumetric, just like the mod "Simple Clouds")
+6. Stars at night
+7. Distant Horizons support
+8. Vivecraft support (idk depends on if i can get my oculus to work to see if its even worth it)
+9. Fresnel effect (Maybe)
