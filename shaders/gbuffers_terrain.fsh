@@ -27,7 +27,7 @@ const vec3 MOON_BLUE  = vec3(0.2, 0.25, 0.45) * 0.25;
 const vec3 SUNRISE    = vec3(1.0, 0.5, 0.3) * 0.5;
 const vec3 NOON       = vec3(0.95, 0.98, 1.0) * 1.0; 
 const vec3 SUNSET     = vec3(0.5, 0.3, 0.1) * 0.75;
-const vec3 WATER_TINT = vec3(0.2, 0.4, 0.8) * 1.0;
+const vec3 WATER_TINT = vec3(1.0, 1.0, 1.0) * 0.85;
 const vec3 LAVA_TINT  = vec3(1.0, 0.4, 0.0) * 0.8;
 const vec3 SNOW_TINT  = vec3(0.9, 0.9, 1.4) * 0.5;
 
@@ -77,7 +77,7 @@ vec3 calcEyeInWater(){
     if (isEyeInWater == 0){
         return vec3(1.0);
     } else if (isEyeInWater == 1){
-        return vec3(WATER_TINT) gl_Color.rgb*fogColor;
+        return vec3(WATER_TINT) * glcolor.rgb + fogColor - vec3(0.6);
     } else if (isEyeInWater == 2){
         return vec3(LAVA_TINT);
     } else if (isEyeInWater == 3){
