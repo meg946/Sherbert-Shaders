@@ -6,6 +6,7 @@ uniform sampler2D gtexture;
 uniform vec3 shadowLightPosition;
 
 uniform int worldTime;
+uniform int isEyeInWater;
 
 uniform float sunAngle;
 uniform float shadowAngle;
@@ -15,16 +16,20 @@ in vec2 lmcoord;
 in vec2 texcoord;
 
 in vec3 normal;
+uniform vec3 fogColor;
 
 in vec4 glcolor;
 
 /* RENDERTARGETS: 0 */
 layout(location = 0) out vec4 color;
 
-const vec3 MOON_BLUE = vec3(0.2, 0.25, 0.45) * 0.25; 
-const vec3 SUNRISE   = vec3(1.0, 0.5, 0.3) * 0.5;
-const vec3 NOON      = vec3(0.95, 0.98, 1.0) * 1.0; 
-const vec3 SUNSET    = vec3(1.0, 0.3, 0.1) * 0.5;
+const vec3 MOON_BLUE  = vec3(0.2, 0.25, 0.45) * 0.25; 
+const vec3 SUNRISE    = vec3(1.0, 0.5, 0.3) * 0.5;
+const vec3 NOON       = vec3(0.95, 0.98, 1.0) * 1.0; 
+const vec3 SUNSET     = vec3(0.5, 0.3, 0.1) * 0.75;
+const vec3 WATER_TINT = vec3(0.2, 0.4, 0.8) * 1.0;
+const vec3 LAVA_TINT  = vec3(1.0, 0.4, 0.0) * 0.8;
+const vec3 SNOW_TINT  = vec3(0.9, 0.9, 1.4) * 0.5;
 
 vec3 calcLightColor() {
     vec3 lightColor = MOON_BLUE;
@@ -68,6 +73,18 @@ vec3 calcLightColor() {
     return lightColor;
 }
 
+vec3 calcEyeInWater(){
+    if (isEyeInWater == 0){
+        return vec3(1.0);
+    } else if (isEyeInWater == 1){
+        return vec3(WATER_TINT) gl_Color.rgb*fogColor;
+    } else if (isEyeInWater == 2){
+        return vec3(LAVA_TINT);
+    } else if (isEyeInWater == 3){
+        return vec3(SNOW_TINT);
+    }
+}
+
 void main() {
 	color = texture(gtexture, texcoord) * glcolor;	
     
@@ -76,7 +93,9 @@ void main() {
 	}
 
     vec3 currentLightTemp = calcLightColor();
+    vec3 waterTint = calcEyeInWater();
     vec4 lightMapColor = texture(lightmap, lmcoord);
-    
-    color.rgb *= lightMapColor.rgb * currentLightTemp;
+
+    color.rgb *= lightMapColor.rgb * currentLightTemp * waterTint;
 }
+
