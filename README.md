@@ -8,6 +8,7 @@ This is my second try at creating a shader pack!
 # Things in progress:
 
 1. Directional Lighting
+2. Fog + Underwater Fog
 
 
 # Things to add:
