@@ -77,7 +77,7 @@ vec3 calcEyeInWater(){
     if (isEyeInWater == 0){
         return vec3(1.0);
     } else if (isEyeInWater == 1){
-        return vec3(WATER_TINT) * glcolor.rgb + fogColor - vec3(0.6);
+    return vec3(WATER_TINT) + fogColor*vec3(.9,1,0.5);// - vec3(0,0,1)*vec3(glcolor);
     } else if (isEyeInWater == 2){
         return vec3(LAVA_TINT);
     } else if (isEyeInWater == 3){
