@@ -23,10 +23,6 @@ in vec4 glcolor;
 /* RENDERTARGETS: 0 */
 layout(location = 0) out vec4 color;
 
-const vec3 WATER_TINT = vec3(1.0, 1.0, 1.0) * 0.85;
-const vec3 LAVA_TINT  = vec3(1.0, 0.4, 0.0) * 0.8;
-const vec3 SNOW_TINT  = vec3(0.9, 0.9, 1.4) * 0.5;
-
 const vec3 MOON_BLUE  = vec3(0.2, 0.25, 0.45) * 0.65; 
 const vec3 SUNRISE    = vec3(1.0, 0.5, 0.3) * 0.5;
 const vec3 NOON       = vec3(0.95, 0.98, 1.0) * 1.0; 
@@ -75,17 +71,6 @@ vec3 calcLightColor() {
     return lightColor;
 }
 
-vec3 calcEyeInWater(){
-    if (isEyeInWater == 0){
-        return vec3(1.0);
-    } else if (isEyeInWater == 1){
-    return vec3(WATER_TINT) + fogColor*vec3(.9,1,0.75);
-    } else if (isEyeInWater == 2){
-        return vec3(LAVA_TINT);
-    } else if (isEyeInWater == 3){
-        return vec3(SNOW_TINT);
-    }
-}
 
 void main() {
 	color = texture(gtexture, texcoord) * glcolor;	
@@ -94,9 +79,9 @@ void main() {
 		discard;
 	}
 
-    vec3 waterTint = calcEyeInWater();
-    vec3 lightColor = calcLightColor();
+    vec3 currentLightTemp = calcLightColor();
+    vec4 lightMapColor = texture(lightmap, lmcoord);
 
-    color.rgb *= waterTint * lightColor;
+    color.rgb *= lightMapColor.rgb * currentLightTemp;
 }
 
