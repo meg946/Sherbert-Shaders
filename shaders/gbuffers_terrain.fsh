@@ -1,5 +1,7 @@
 #version 330 compatibility
 
+/* RENDERTARGETS: 0,1,2 */
+
 uniform sampler2D lightmap;
 uniform sampler2D gtexture;
 uniform sampler2D normals;
@@ -7,38 +9,17 @@ uniform sampler2D specular;
 
 uniform vec3 shadowLightPosition;
 uniform vec3 fogColor;
-
-
 uniform int worldTime;
-uniform int isEyeInWater;
-uniform int worldDay;
-
-uniform float sunAngle;
-uniform float shadowAngle;
 uniform float alphaTestRef = 0.1;
-uniform float far;
-uniform float near;
-uniform float fogDensity;
-uniform float fogStart;
-uniform float fogEnd;
-
-
+uniform mat4 gbufferModelViewInverse;
 
 in vec2 lmcoord;
 in vec2 texcoord;
-
 in vec3 normal;
 in vec3 binormal;
 in vec3 tangent;
 in vec4 glcolor;
-
-
-const float sunPathRotation = 10.0;
-
-uniform mat4 gbufferModelViewInverse;
-
-/* RENDERTARGETS: 0,1,2 */
-layout(location = 0) out vec4 color;
+in vec3 viewVector; // Needed for reflections
 
 const vec3 MOON_BLUE  = vec3(0.3, 0.35, 0.45) * 0.85; 
 const vec3 SUNRISE    = vec3(1.0, 0.5, 0.3) * 0.5;
@@ -97,35 +78,51 @@ void main() {
         discard;
     }
 
-    // 2. PBR Data Unpacking
+    // 2. Unpack PBR Data
     vec4 normalData = texture(normals, texcoord);
     vec4 specData   = texture(specular, texcoord);
 
-    // 3. Normal Map Calculation (TBN)
-    vec3 viewNormal = normalData.rgb * 2.0 - 1.0;
-    mat3 tbnMatrix = mat3(tangent, binormal, normal);
-    vec3 finalNormal = normalize(tbnMatrix * viewNormal);
-
-    // 4. Specular Data
     float smoothness = specData.r;
     float metalness  = specData.g;
     float emissive   = specData.a;
 
-    // 5. Apply Lighting (Basic)
-    vec3 lightVector = normalize(shadowLightPosition);
-    vec3 worldLightVector = mat3(gbufferModelViewInverse) * lightVector;
+    // 3. Calculate PBR Normal (The "Bump" Effect)
+    vec3 viewNormal = normalData.rgb * 2.0 - 1.0;
+    mat3 tbnMatrix = mat3(tangent, binormal, normal);
     
-    vec4 lightMapColor = texture(lightmap, lmcoord);
-    vec3 currentLightTemp = calcLightColor();
-    
-    // Simple sunlight dot product
-    float NdotL = max(dot(normal, worldLightVector), 0.0);
-    vec3 sunlight = vec3(NdotL * 0.1) * lightMapColor.rgb; // heavily reduced per your old code
+    // This is the vector that makes things look 3D
+    vec3 finalNormal = normalize(tbnMatrix * viewNormal);
 
-    albedo.rgb *= lightMapColor.rgb * currentLightTemp + sunlight;
+    // 4. Lighting Setup
+    vec3 lightDir = normalize(shadowLightPosition); // Vector towards the sun
+    vec3 viewDir = normalize(-viewVector);          // Vector towards the camera
+
+    // --- EFFECT 1: BUMP MAPPING (Shadows on the texture) ---
+    // Use finalNormal instead of normal
+    float NdotL = max(dot(finalNormal, lightDir), 0.0);
     
-    // 6. Final Output (Write to all buffers)
-    gl_FragData[0] = albedo; // Color
-    gl_FragData[1] = vec4(finalNormal, 1.0); // Normal Vector
-    gl_FragData[2] = vec4(smoothness, metalness, emissive, 1.0); // PBR Data
+    // --- EFFECT 2: SPECULAR HIGHLIGHTS (Shininess) ---
+    // Calculate reflection vector
+    vec3 reflectDir = reflect(-lightDir, finalNormal);
+    
+    // Calculate highlight size based on smoothness
+    float specStrength = pow(max(dot(viewDir, reflectDir), 0.0), 10.0 + (smoothness * 200.0));
+    
+    // Adjust brightness based on smoothness/metalness
+    vec3 specularHighlight = vec3(specStrength) * smoothness * (1.0 + metalness);
+
+    // 5. Combine Everything
+    vec4 lightMapColor = texture(lightmap, lmcoord);
+    vec3 sunColor = calcLightColor();
+    
+    // Base Lighting (Sunlight + Blocklight)
+    vec3 diffuse = albedo.rgb * (lightMapColor.rgb * sunColor + (vec3(NdotL) * 0.5));
+    
+    // Add Shininess (Specular) and Glow (Emissive)
+    vec3 finalColor = diffuse + specularHighlight + (albedo.rgb * emissive);
+
+    // 6. Output to Screen
+    gl_FragData[0] = vec4(finalColor, albedo.a);          // Visual Color
+    gl_FragData[1] = vec4(finalNormal, 1.0);              // Backup Normal
+    gl_FragData[2] = vec4(smoothness, metalness, emissive, 1.0); // Backup PBR
 }
