@@ -10,9 +10,7 @@ uniform sampler2D specular;
 uniform vec3 shadowLightPosition;
 uniform float alphaTestRef = 0.1;
 
-// --- FIX: ADDED MISSING UNIFORMS ---
 uniform int worldTime;
-uniform mat4 gbufferModelViewInverse;
 
 in vec2 lmcoord;
 in vec2 texcoord;
@@ -22,7 +20,7 @@ in vec3 tangent;
 in vec4 glcolor;
 in vec3 viewVector;
 
-// --- YOUR COLOR CONSTANTS ---
+// --- COLOR CONSTANTS ---
 const vec3 MOON_BLUE  = vec3(0.3, 0.35, 0.45) * 0.85;
 const vec3 SUNRISE    = vec3(1.0, 0.5, 0.3) * 0.5;
 const vec3 NOON       = vec3(0.95, 0.98, 1.0) * 1.0;
@@ -38,7 +36,7 @@ vec3 calcLightColor() {
         lightColor = mix(MOON_BLUE, SUNRISE, blendFactor);
     } else if (worldTime < 1000) {
          blendFactor = smoothstep(0.0, 1000.0, timeFloat);
-         lightColor = mix(SUNRISE, NOON, blendFactor);
+        lightColor = mix(SUNRISE, NOON, blendFactor);
     } else if (worldTime >= 1000 && worldTime < 6000) {
         blendFactor = smoothstep(1000.0, 6000.0, timeFloat);
         lightColor = mix(mix(SUNRISE, NOON, 0.5), NOON, blendFactor);
@@ -51,6 +49,7 @@ vec3 calcLightColor() {
         blendFactor = smoothstep(12000.0, 14000.0, timeFloat);
         lightColor = mix(SUNSET, MOON_BLUE, blendFactor);
     }
+    
     return lightColor;
 }
 
@@ -59,38 +58,45 @@ void main() {
     vec4 albedo = texture(gtexture, texcoord) * glcolor;
     if (albedo.a < alphaTestRef) discard;
 
-    // 2. Unpack PBR
-    vec4 normalData = texture(normals, texcoord);
-    vec4 specData   = texture(specular, texcoord);
-    
-    float smoothness = specData.r;
-    float metalness  = specData.g;
-    float emissive   = specData.a;
+    // 2. HARDCODED PBR DEFAULTS (Fixes the "Bright Ground" & "Dark Logs" issue)
+    // Since we don't have a PBR resource pack, we must set these to 0 manually.
+    float smoothness = 0.0;
+    float metalness  = 0.0;
+    float emissive   = 0.0; 
 
-    // 3. PBR Normals
-    vec3 viewNormal = normalData.rgb * 2.0 - 1.0;
-    mat3 tbnMatrix = mat3(tangent, binormal, normal);
-    vec3 finalNormal = normalize(tbnMatrix * viewNormal);
+    // 3. GEOMETRY NORMALS ONLY
+    // We ignore the 'normals' texture because it contains garbage data for vanilla blocks.
+    vec3 finalNormal = normalize(normal); 
 
     // 4. Lighting Calculation
     vec3 lightDir = normalize(shadowLightPosition);
     vec3 viewDir = normalize(-viewVector);
 
-    // Bump Shadow (Self-shadowing)
+    // Bump Shadow (Sun/Moon Shadow)
+    // Using 0.3 as a minimum brightness so shadows aren't pitch black
     float NdotL = max(dot(finalNormal, lightDir), 0.0);
-    float bumpShadow = NdotL * 0.5 + 0.5; 
+    float bumpShadow = NdotL * 0.7 + 0.3; 
 
-    // Specular Highlight
+    // Specular Highlight (Standard Blinn-Phong)
+    // We keep this simple since we disabled the PBR maps
     vec3 reflectDir = reflect(-lightDir, finalNormal);
-    float specStrength = pow(max(dot(viewDir, reflectDir), 0.0), 10.0 + (smoothness * 100.0));
-    vec3 highlight = vec3(specStrength) * smoothness * metalness;
+    // Low specular for everything by default
+    float specStrength = pow(max(dot(viewDir, reflectDir), 0.0), 16.0);
+    vec3 highlight = vec3(specStrength) * 0.1; 
 
-    // 5. Combine with Your Colors
-    vec4 lightMapColor = texture(lightmap, lmcoord);
-    vec3 sunColor = calcLightColor(); // Your time-based color
+    // 5. Combine Colors (Corrected Lightmap)
+    vec3 sunColor = calcLightColor();
     
-    // Mix: (Texture * VanillaLight * SunColor * Bump) + Highlight + Glow
-    vec3 finalColor = (albedo.rgb * lightMapColor.rgb * sunColor * bumpShadow) + highlight + (albedo.rgb * emissive);
+    // Separate Block Light (Torches) from Sky Light (Sun)
+    // lmcoord.x = Torch Light | lmcoord.y = Sky Light
+    // Torch light should NOT be affected by the sun shadow (bumpShadow)
+    vec3 blockLightColor = texture(lightmap, vec2(lmcoord.x, 0.03)).rgb; 
+    
+    // Sky light IS affected by the sun shadow and our custom sun color
+    vec3 skyLightColor   = texture(lightmap, vec2(0.03, lmcoord.y)).rgb * sunColor * bumpShadow;
+
+    // Final Mix: Albedo * (Block + Sky) + Highlight
+    vec3 finalColor = albedo.rgb * (blockLightColor + skyLightColor) + highlight;
 
     // 6. Output
     gl_FragData[0] = vec4(finalColor, albedo.a);
