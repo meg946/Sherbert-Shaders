@@ -2,6 +2,8 @@
 
 uniform sampler2D lightmap;
 uniform sampler2D gtexture;
+uniform sampler2D normals;
+uniform sampler2D specular;
 
 uniform vec3 shadowLightPosition;
 
@@ -19,6 +21,8 @@ in vec3 normal;
 uniform vec3 fogColor;
 
 in vec4 glcolor;
+in vec4 at_midBlock;
+
 
 /* RENDERTARGETS: 0 */
 layout(location = 0) out vec4 color;
@@ -89,12 +93,15 @@ vec3 calcEyeInWater(){
 
 void main() {
 	color = texture(gtexture, texcoord) * glcolor;	
-    
+    color *= texture(normals, texcoord);
+
+
     if (color.a < alphaTestRef) {
 		discard;
 	}
 
-    vec3 waterTint = calcEyeInWater();
+
+    vec3 waterTint = 0.9*calcEyeInWater();
     vec3 lightColor = calcLightColor();
 
     color.rgb *= waterTint * lightColor;
