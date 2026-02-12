@@ -2,7 +2,8 @@
 
 uniform mat4 gbufferModelViewInverse;
 
-attribute in vec4 at_tangent;
+// Required for PBR
+attribute vec4 at_tangent; 
 
 out vec2 lmcoord;
 out vec2 texcoord;
@@ -20,10 +21,14 @@ void main() {
     
     glcolor = gl_Color;
     
+    // 1. Calculate Normal
     normal = normalize(gl_NormalMatrix * gl_Normal);
+    
+    // 2. Calculate Tangent & Binormal
     tangent = normalize(gl_NormalMatrix * at_tangent.xyz);
     binormal = cross(tangent, normal) * at_tangent.w;
 
+    // 3. View Vector
     vec4 position = gl_ModelViewMatrix * gl_Vertex;
-    viewVector = nomralize(position.xyz);
+    viewVector = normalize(position.xyz);
 }
