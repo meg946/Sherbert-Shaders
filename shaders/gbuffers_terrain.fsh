@@ -31,7 +31,6 @@ in vec3 normal;
 in vec3 binormal;
 in vec3 tangent;
 in vec4 glcolor;
-in vec4 at_midBlock;
 
 
 const float sunPathRotation = 10.0;
@@ -91,56 +90,42 @@ vec3 calcLightColor() {
 
 
 void main() {
-	color = texture(gtexture, texcoord) * glcolor;
+    // 1. Base Color
+    vec4 albedo = texture(gtexture, texcoord) * glcolor;
     
+    if (albedo.a < alphaTestRef) {
+        discard;
+    }
 
-    //PBR STUFF
+    // 2. PBR Data Unpacking
+    vec4 normalData = texture(normals, texcoord);
+    vec4 specData   = texture(specular, texcoord);
 
-
-    vec4 albedoData = texture2D(gtexture, texcoord) * color;
-    vec4 normalData = texture2D(normals, texcoord);
-    vec4 specData   = texture2D(specular, texcoord);
-
+    // 3. Normal Map Calculation (TBN)
     vec3 viewNormal = normalData.rgb * 2.0 - 1.0;
-
     mat3 tbnMatrix = mat3(tangent, binormal, normal);
     vec3 finalNormal = normalize(tbnMatrix * viewNormal);
 
+    // 4. Specular Data
     float smoothness = specData.r;
-    float metalness = specData.g;
-    float porosity = specData.b;
-    float emissive = specData.a;
-    float height = normalData.a;
+    float metalness  = specData.g;
+    float emissive   = specData.a;
 
-    
-    
-    //END OF PBR
-
-
-    vec3 ambientLight = vec3(-.2);
-
+    // 5. Apply Lighting (Basic)
     vec3 lightVector = normalize(shadowLightPosition);
     vec3 worldLightVector = mat3(gbufferModelViewInverse) * lightVector;
-
-
-    if (color.a < alphaTestRef) {
-		discard;
-	}
     
-    if (at_midBlock.w >= 1){
-        color.rgb *= vec3(1.40);
-    }
-
-    vec3 currentLightTemp = calcLightColor();
-    vec3 sunlight = clamp(dot(worldLightVector, normal), 0.0, 0.10) * vec3(texture(lightmap,texcoord));
-
     vec4 lightMapColor = texture(lightmap, lmcoord);
-
-    color.rgb *= lightMapColor.rgb * currentLightTemp + sunlight;
+    vec3 currentLightTemp = calcLightColor();
     
-    gl_FragData[0] = albedoData;
-    gl_FragData[1] = vec4(finalNormal, 1.0);
-    gl_FragData[2] = vec4(smoothness, metalness, emissive, 1.0);
+    // Simple sunlight dot product
+    float NdotL = max(dot(normal, worldLightVector), 0.0);
+    vec3 sunlight = vec3(NdotL * 0.1) * lightMapColor.rgb; // heavily reduced per your old code
 
+    albedo.rgb *= lightMapColor.rgb * currentLightTemp + sunlight;
+    
+    // 6. Final Output (Write to all buffers)
+    gl_FragData[0] = albedo; // Color
+    gl_FragData[1] = vec4(finalNormal, 1.0); // Normal Vector
+    gl_FragData[2] = vec4(smoothness, metalness, emissive, 1.0); // PBR Data
 }
-

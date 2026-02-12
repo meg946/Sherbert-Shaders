@@ -1,11 +1,14 @@
 #version 330 compatibility
 
 uniform mat4 gbufferModelViewInverse;
+attribute vec4 at_tangent;
 
 out vec2 lmcoord;
 out vec2 texcoord;
 out vec4 glcolor;
 out vec3 normal;
+out vec3 tangent;
+out vec3 binormal;
 
 
 void main() {
@@ -18,5 +21,6 @@ void main() {
     glcolor = gl_Color;
     
     normal = gl_NormalMatrix * gl_Normal;
-    normal = mat3(gbufferModelViewInverse) * normal;
+    tangent = normalize(gl_NormalMatrix * at_tangent.xyz);
+    binormal = cross(tangent, normal) * at_tangent.w;
 }

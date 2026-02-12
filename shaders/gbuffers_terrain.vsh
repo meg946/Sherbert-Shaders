@@ -2,22 +2,28 @@
 
 uniform mat4 gbufferModelViewInverse;
 
+attribute in vec4 at_tangent;
+
 out vec2 lmcoord;
 out vec2 texcoord;
 out vec4 glcolor;
 out vec3 normal;
-out vec3 at_midBlock;
-
+out vec3 tangent;
+out vec3 binormal;
+out vec3 viewVector;
 
 void main() {
     gl_Position = ftransform();
 
     texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     lmcoord = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
-    //lmcoord *= (31.0 / 32.0) - (1.0 / 32.0);
     
     glcolor = gl_Color;
     
-    normal = gl_NormalMatrix * gl_Normal;
-    normal = mat3(gbufferModelViewInverse) * normal;
+    normal = normalize(gl_NormalMatrix * gl_Normal);
+    tangent = normalize(gl_NormalMatrix * at_tangent.xyz);
+    binormal = cross(tangent, normal) * at_tangent.w;
+
+    vec4 position = gl_ModelViewMatrix * gl_Vertex;
+    viewVector = nomralize(position.xyz);
 }
