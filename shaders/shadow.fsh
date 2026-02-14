@@ -1,15 +1,14 @@
-#version 120
+#version 330 compatibility
 
-// Basic Shadow Fragment Shader
-uniform sampler2D texture;
-varying vec2 texcoord;
+in vec2 texcoord;
+in vec4 glcolor;
+uniform sampler2D gtexture;
 
 void main() {
-    // Get the texture color (e.g., leaves, glass)
-    vec4 color = texture2D(texture, texcoord);
-    
-    // If the pixel is transparent, discard the shadow (don't block light)
-    if (color.a < 0.1) discard;
-    
-    gl_FragColor = color;
+    // Sample the texture at the current fragment
+    vec4 tex = texture(gtexture, texcoord) * glcolor;
+
+    // Alpha Testing: If the texture is transparent (like leaves or glass), 
+    // discard the fragment so it doesn't cast a solid rectangular shadow.
+    if (tex.a < 0.1) discard; 
 }
