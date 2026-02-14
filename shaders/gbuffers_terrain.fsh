@@ -91,13 +91,13 @@ Material GetMaterialProperties(int id, vec3 albedoColor) {
     }
     // Metals
     else if (id >= 1000 && id < 2000) {
-        m.metalness = -1.0;
+        m.metalness = 0.85;
         m.roughness = 0.3;
         
-        if (id == 1000) m.roughness = 0.35; // Iron
+        if (id == 1000) m.roughness = 0.25; // Iron
         if (id == 1010) m.roughness = 0.15; // Gold
-        if (id == 1022) { m.roughness = 0.6; m.metalness = 0.6; } // Weathered Copper
-        if (id == 1023) { m.roughness = 0.9; m.metalness = 0.0; } // Oxidized Copper
+        if (id == 1022) { m.roughness = 0.5; m.metalness = 0.6; } // Weathered Copper
+        if (id == 1023) { m.roughness = 0.45; m.metalness = 0.7; } // Oxidized Copper
     }
     // Gemstones
     else if (id >= 2000 && id < 3000) {
@@ -105,18 +105,23 @@ Material GetMaterialProperties(int id, vec3 albedoColor) {
         if (id == 2000) m.f0 = 0.17; // Diamond
         if (id == 2001) m.f0 = 0.07; // Emerald
     }
-    // Emissives
+    // Emissives (Torches, Glowstone, etc.)
     else if (id >= 3000 && id < 4000) {
-        m.emission = 0.1;
-        if (id == 3005) { // Lava
-            m.roughness = 0.2;
-            m.emission = getLuma(albedoColor) * 1.5; 
+        // Boost baseline emission from 0.1 to 1.2 so they actually glow
+        m.emission = 0.2; 
+        
+        // Lava & Fire need to be VERY bright to look hot
+        if (id == 3005 || id == 3006) { 
+            m.roughness = 0.1; // Lower roughness makes it look "wet" or hot
+            // Use Luma to make the bright parts of the texture glow intensely (3.0x)
+            // and the dark parts (crust) glow less
+            m.emission = getLuma(albedoColor) * 3.0; 
         }
     }
     // Water/Ice
     else if (id >= 4000) {
-        m.roughness = 0.002;
-        m.f0 = 0.02;
+        m.roughness = 0.5;
+        m.f0 = 0.8;
     }
 
     if (m.roughness > 0.2 && m.emission == 0.0) {
@@ -251,8 +256,8 @@ void main() {
 
     vec3 N = normalize(normal);
     vec3 L = normalize(shadowLightPosition); 
-    vec3 V = normalize(-viewVector);
-    vec3 H = -normalize(L + V);
+    vec3 V = normalize(viewVector);
+    vec3 H = normalize(L + V);
 
     float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0);
@@ -292,7 +297,22 @@ void main() {
     float blockLight = pow(lmcoord.x, 0.0); 
     float skyLight   = pow(lmcoord.y, 0.0);
     
-    vec3 ambient = albedo * (blockLight * vec3(1.0, 0.8, 0.6) * lightColor * 0.1 + 0.03);
+    vec3 ambientColor = (blockLight * vec3(1.0, 0.8, 0.6) * lightColor * 0.1 + 0.03);
+    vec3 ambient = albedo * ambientColor;
+
+    // --- METAL FIX (Fake Reflection) ---
+    // Metals rely on reflections. Since we have no skybox, we fake a "sky reflection"
+    // by adding a base brightness scaled by metalness.
+    if (mat.metalness > 0.0) {
+        // Create a fake reflection color (Sky + Albedo tint for metals)
+        vec3 fakeEnvReflection = lightColor * 0.5 + vec3(0.1); 
+        
+        // Add this reflection to ambient, scaled by how metallic the block is
+        // We multiply by albedo because metals color their reflections
+        ambient += fakeEnvReflection * albedo * mat.metalness * 0.5; 
+    }
+
+    // Direct Light
     vec3 direct = (kD * albedo / PI + specularLight) * lightColor * NdotL * shadowVal;
 
     vec3 finalColor = direct + ambient + (albedo * mat.emission);
