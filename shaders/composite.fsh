@@ -13,7 +13,4 @@ layout(location = 0) out vec4 color;
 void main() {
     // Sample the color from the main scene texture at the current coordinate
     color = texture(colortex0, texcoord);
-    
-    // Explicitly set the RGB values (currently a direct copy)
-    color.rgb = vec3(color);
 }
