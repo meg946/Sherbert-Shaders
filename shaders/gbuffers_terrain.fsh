@@ -26,8 +26,6 @@ uniform vec3 sunPosition;
 uniform float viewWidth;
 uniform float viewHeight;
 
-// FIX: Added this uniform. If it was missing, dividing by it caused a crash.
-uniform float shadowMapResolution = 2048.0; 
 
 // --- INPUTS ---
 flat in int blockId;    
@@ -93,7 +91,7 @@ Material GetMaterialProperties(int id, vec3 albedoColor) {
     }
     // Metals
     else if (id >= 1000 && id < 2000) {
-        m.metalness = 1.0;
+        m.metalness = -1.0;
         m.roughness = 0.3;
         
         if (id == 1000) m.roughness = 0.35; // Iron
@@ -109,7 +107,7 @@ Material GetMaterialProperties(int id, vec3 albedoColor) {
     }
     // Emissives
     else if (id >= 3000 && id < 4000) {
-        m.emission = 1.0;
+        m.emission = 0.1;
         if (id == 3005) { // Lava
             m.roughness = 0.2;
             m.emission = getLuma(albedoColor) * 1.5; 
@@ -254,7 +252,7 @@ void main() {
     vec3 N = normalize(normal);
     vec3 L = normalize(shadowLightPosition); 
     vec3 V = normalize(-viewVector);
-    vec3 H = normalize(L + V);
+    vec3 H = -normalize(L + V);
 
     float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0);
