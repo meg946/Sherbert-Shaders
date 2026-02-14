@@ -26,6 +26,8 @@ uniform vec3 sunPosition;
 uniform float viewWidth;
 uniform float viewHeight;
 
+const float sunPathRotation = -40.0;
+
 
 // --- INPUTS ---
 flat in int blockId;    
