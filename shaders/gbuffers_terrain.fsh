@@ -253,8 +253,6 @@ void main() {
     vec3 shadowViewPos = (shadowModelView * vec4(feetPlayerPos, 1.0)).xyz;
     vec4 shadowClipPos = shadowProjection * vec4(shadowViewPos, 1.0);
     
-    vec3 shadowVal = clamp(getSoftShadow(shadowClipPos), 0.0, 1.0);
-
     vec3 lightColor = calcLightColor();
     vec3 ambientColor = (1 * vec3(1.0, 0.8, 0.6) * lightColor * 0.1 + 0.03);
     vec3 ambient = albedo * ambientColor;
@@ -264,7 +262,7 @@ void main() {
         ambient += fakeEnvReflection * albedo * mat.metalness * 0.5; 
     }
 
-    vec3 direct = (kD * albedo / PI + specularLight) * lightColor * NdotL * shadowVal;
+    vec3 direct = (kD * albedo / PI + specularLight) * lightColor * NdotL;
     vec3 finalColor = direct + ambient + (albedo * mat.emission);
 
     // --- Tonemapping ---
