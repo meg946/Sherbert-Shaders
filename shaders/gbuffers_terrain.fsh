@@ -141,69 +141,6 @@ Material GetMaterialProperties(int id, vec3 albedoColor) {
     return m;
 }
 
-// --- SHADOW FUNCTIONS ---
-vec3 getShadow(vec3 shadowScreenPos){
-    float transparentShadow = step(shadowScreenPos.z, texture(shadowtex0, shadowScreenPos.xy).r);
-    if(transparentShadow == 1.0) return vec3(1.0);
-    
-    float opaqueShadow = step(shadowScreenPos.z, texture(shadowtex1, shadowScreenPos.xy).r);
-    if(opaqueShadow == 0.0) return vec3(0.0);
-
-    vec4 shadowColor = texture(shadowcolor0, shadowScreenPos.xy);
-    return shadowColor.rgb * (1.0 - shadowColor.a);
-}
-
-vec4 getNoise(vec2 coord){
-    // FIX: Safety check for view dimensions to prevent weird noise coords
-    vec2 dims = vec2(max(viewWidth, 1.0), max(viewHeight, 1.0));
-    ivec2 screenCoord = ivec2(coord * dims);
-    ivec2 noiseCoord = screenCoord % 64;
-    return texelFetch(noisetex, noiseCoord, 0);
-}
-
-vec3 getSoftShadow(vec4 shadowClipPos){
-    float noise = getNoise(texcoord).r;
-    float theta = noise * radians(360.0);
-    float cosTheta = cos(theta);
-    float sinTheta = sin(theta);
-    mat2 rotation = mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
-    
-    vec3 shadowAccum = vec3(0.0);
-    
-    // Safety: ensure resolution is valid
-    float res = max(shadowMapResolution, 2048.0);
-
-    // Optimized Loop: Only runs 4 times (when Range is 1)
-    float samples = 0.0;
-    
-    for(int x = -SHADOW_RANGE; x <= SHADOW_RANGE; x++){ // Changed < to <= to get center
-        if (x == 0 && SHADOW_RANGE > 1) {continue;} // Skip center if doing wide sampling
-        for(int y = -SHADOW_RANGE; y <= SHADOW_RANGE; y++){
-            // Simply sample 4 points
-            if (abs(x) + abs(y) > SHADOW_RANGE + 1) continue; // Skip corners to make it roundish
-
-            vec2 offset = vec2(x, y) * SHADOW_RADIUS / float(SHADOW_RANGE);
-            offset = rotation * offset;
-            offset /= res;
-            
-            vec4 offsetShadowClipPos = shadowClipPos + vec4(offset, 0.0, 0.0);
-            offsetShadowClipPos.z -= 0.001; 
-            offsetShadowClipPos.xyz = distortShadowClipPos(offsetShadowClipPos.xyz);
-            
-            vec3 shadowNDCPos = offsetShadowClipPos.xyz / offsetShadowClipPos.w;
-            vec3 shadowScreenPos = shadowNDCPos * 0.5 + 0.5;
-            
-            if (shadowScreenPos.x < 0.0 || shadowScreenPos.x > 1.0 || shadowScreenPos.y < 0.0 || shadowScreenPos.y > 1.0) {
-                shadowAccum += vec3(1.0);
-            } else {
-                shadowAccum += getShadow(shadowScreenPos);
-            }
-            samples += 1.0;
-        }
-    }
-    return shadowAccum / max(samples, 1.0);
-}
-
 vec3 projectAndDivide(mat4 projectionMatrix, vec3 position){
     vec4 homPos = projectionMatrix * vec4(position, 1.0);
     return homPos.xyz / homPos.w;

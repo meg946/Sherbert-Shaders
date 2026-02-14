@@ -2,6 +2,7 @@
 
 // The main color buffer (the rendered scene) from previous passes
 uniform sampler2D colortex0;
+uniform sampler2D shadowtex0;
 
 // Texture coordinates received from the vertex shader
 in vec2 texcoord;
